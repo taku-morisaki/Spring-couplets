@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>自製春聯圖片產生器 Pro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont;
+      background: #f2f2f2;
+      padding: 12px;
+    }
+    .container {
+      max-width: 960px;
+      margin: auto;
+      background: #fff;
+      padding: 16px;
+      border-radius: 12px;
+    }
+    h1 { text-align: center; margin-bottom: 12px; }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .controls input, .controls select {
+      padding: 10px;
+      font-size: 16px;
+    }
+
+    .full { grid-column: 1 / -1; }
+
+    .buttons {
+      text-align: center;
+      margin: 15px 0;
+    }
+
+    button {
+      padding: 10px 14px;
+      margin: 4px;
+      font-size: 14px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    canvas {
+      display: block;
+      margin: auto;
+      max-width: 100%;
+      height: auto;
+    }
+
+    @media (max-width: 600px) {
+      .controls { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>春聯圖片產生器 Pro</h1>
+
+  <div class="controls">
+    <input id="topText" class="full" placeholder="橫批" />
+    <input id="leftText" placeholder="上聯" />
+    <input id="rightText" placeholder="下聯" />
+
+    <select id="fontSelect">
+　　　<option value="DFKai-sb">春聯字</option>
+      <option value="serif">書法風</option>
+      <option value="sans">黑體</option>
+      <option value="hand">手寫</option>
+    </select>
+
+    <select id="styleSelect">
+      <option value="normal">一般</option>
+      <option value="outline">字體外框線（金邊）</option>
+      <option value="emboss">浮雕</option>
+      <option value="foil">燙金感</option>
+    </select>
+
+    <input type="color" id="textColor" value="#ffd700" />
+    <input type="color" id="strokeColor" value="#b8860b" />
+    <input type="number" id="strokeWidth" value="4" min="1" max="20" />
+
+    <select id="sizeSelect" class="full">
+      <option value="normal">一般春聯</option>
+      <option value="social">社群貼文尺寸 (1080×1080)</option>
+    </select>
+  </div>
+
+  <div class="buttons">
+    <button onclick="render()">生成圖片</button>
+    <button onclick="downloadImage()">下載完整</button>
+  </div>
+
+  <canvas id="canvas" width="600" height="600"></canvas>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+const topText = document.getElementById('topText');
+const leftText = document.getElementById('leftText');
+const rightText = document.getElementById('rightText');
+const fontSelect = document.getElementById('fontSelect');
+const styleSelect = document.getElementById('styleSelect');
+const sizeSelect = document.getElementById('sizeSelect');
+const textColorInput = document.getElementById('textColor');
+const strokeColorInput = document.getElementById('strokeColor');
+const strokeWidthInput = document.getElementById('strokeWidth');
+
+function getFontFamily() {
+  switch (fontSelect.value) {
+    case 'DFKai-sb': return '"DFKai-sb"';
+    case 'serif': return '"Noto Serif TC"';
+    case 'sans': return '"Noto Sans TC"';
+    case 'hand': return '"Ma Shan Zheng"';
+    default: return 'serif';
+  }
+}
+
+function applyTextStyle(style) {
+  const baseColor = textColorInput.value;
+  const strokeColor = strokeColorInput.value;
+  const strokeWidth = Number(strokeWidthInput.value);
+
+  ctx.fillStyle = baseColor;
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = 0;
+  ctx.shadowColor = 'transparent';
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+
+  if (style === 'outline') {
+    ctx.lineWidth = strokeWidth;
+  } else if (style === 'emboss') {
+    ctx.shadowColor = 'rgba(0,0,0,0.4)';
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 3;
+  } else if (style === 'foil') {
+    const grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.3, baseColor);
+    grad.addColorStop(0.6, '#ffd700');
+    grad.addColorStop(1, '#c9a200');
+    ctx.fillStyle = grad;
+  }
+}
+
+function drawVertical(text, x, y, w, h) {
+  ctx.fillStyle = '#c40000';
+  ctx.fillRect(x, y, w, h);
+
+  applyTextStyle(styleSelect.value);
+
+  const chars = text.split('');
+  const gap = h / (chars.length + 1);
+
+  chars.forEach((ch, i) => {
+    const ty = y + gap * (i + 1);
+    ctx.fillText(ch, x + w / 2, ty);
+    if (styleSelect.value === 'outline') {
+      ctx.strokeText(ch, x + w / 2, ty);
+    }
+  });
+}
+
+function render() {
+  const isSocial = sizeSelect.value === 'social';
+  canvas.width = isSocial ? 1080 : 600;
+  canvas.height = isSocial ? 1080 : 600;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `bold ${isSocial ? 64 : 36}px ${getFontFamily()}`;
+
+  drawVertical(leftText.value, canvas.width * 0.1, canvas.height * 0.2, canvas.width * 0.15, canvas.height * 0.65);
+  drawVertical(rightText.value, canvas.width * 0.75, canvas.height * 0.2, canvas.width * 0.15, canvas.height * 0.65);
+
+  const bannerX = canvas.width * 0.25;
+  const bannerY = canvas.height * 0.05;
+  const bannerW = canvas.width * 0.5;
+  const bannerH = canvas.height * 0.1;
+
+  ctx.fillStyle = '#c40000';
+  ctx.fillRect(bannerX, bannerY, bannerW, bannerH);
+
+  applyTextStyle(styleSelect.value);
+  ctx.fillText(topText.value, bannerX + bannerW / 2, bannerY + bannerH / 2);
+  if (styleSelect.value === 'outline') {
+    ctx.strokeText(topText.value, bannerX + bannerW / 2, bannerY + bannerH / 2);
+  }
+}
+
+function downloadImage() {
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = '春聯.png';
+  a.click();
+}
+</script>
+</body>
+</html>
